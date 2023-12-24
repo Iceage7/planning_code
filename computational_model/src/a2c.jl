@@ -213,6 +213,7 @@ function run_episode(
         )
         rew, agent_input, a = zeropad_data(rew, agent_input, a, active) #mask if episode is finished
 
+
         agent_outputs = cat(agent_outputs, agent_output; dims=3) #store output (y_t); Nout x batch x T
         rews = cat(rews, rew; dims=3) #store reward (r_t); 1 x batch x T
         actions = cat(actions, a; dims=3) #store action (a_t)
@@ -227,10 +228,14 @@ function run_episode(
     #rews is batch x T, V is batch x T, δs is batch x T
     δs = calc_deltas(rews[1, :, :], agent_outputs[Naction + 1, :, :]) #TD errors
 
+    #rews shape is  1 x batch x T
+
     L = Float32(0.0)
     if calc_loss N = size(rews, 3) else N = 0 end #total number of iterations to compute loss for
-    for t = 1:N #iterations
+    for t = 1:N #iterations  (1:T) if calc_loss
         active = Float32.(actions[1, :, t] .> 0.5) #zero for finished episodes
+        #active is a mask that is 1.0 for episodes that are still active (i.e., the corresponding action at time step t is greater than 0.5) and 0.0 for episodes that are finished
+        #line 204, 214, 219 
         Vterm = δs[:, t] .* agent_outputs[Naction + 1, :, t] #value function (batch)
         L -= sum(loss_hp.βv * Vterm .* active) #loss (sum over active episodes through multiplication by 'active')
         for b in findall(Bool.(active)) #for each active episode
